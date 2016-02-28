@@ -2,9 +2,53 @@
 <head>
     <title>Lightcycle</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <style>
+        html, body{
+            margin: 0;
+            padding: 0;
+            font-family: Arial;
+        }
+        .cls{
+            clear: both;
+        }
+        .container{
+            width: 100%;
+        }
+        .container .left, .container .right{
+            float: left;
+        }
+        .container .left{
+            width: 800px;
+        }
+        .container .right{
+            width: calc(100% - 800px);
+        }
+        .container .right .score > div{
+            float: left;
+            width: 50%;
+            padding: 10px;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+        .container .right .score .name{
+            text-align: right;
+            font-weight: bold;
+        }
+        .container .right .score .score-label{
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
-<canvas id="game" width="800" height="600"></canvas>
+<div class="container">
+    <div class="left">
+        <canvas id="game" width="800" height="600"></canvas>
+    </div>
+    <div class="right">
+    </div>
+    <div class="cls"></div>
+</div>
 <script type="text/javascript" src="main.js"></script>
 </body>
 </html>
