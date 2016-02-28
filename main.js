@@ -7,6 +7,7 @@ var KEYS = {
     S: 83,
     D: 68,
     W: 87,
+    Z: 90,
     SPACE: 32,
     ALT: 18
 };
@@ -33,6 +34,7 @@ function Point(x, y) {
 }
 
 function Player(_keyControlls, _otherKeys) {
+    console.log(_otherKeys);
     var keyController = null;
     if (typeof _keyControlls != "undefined" && _keyControlls != null) {
         keyController = new KeyController(_keyControlls, _otherKeys);
@@ -144,6 +146,8 @@ function CanvasController(c) {
     var self = this;
 
     document.body.onkeydown = function (e) {
+        console.log(e.which);
+
         keyDowns[e.which] = true;
     };
     document.body.onkeyup = function (e) {
@@ -154,26 +158,26 @@ function CanvasController(c) {
             if (controllers[i].update) {
                 controllers[i].update(self.keyDownProvider);
             }
-
-            collusionTest : {
-                for (var i = 0; i < controllers.length; i++) {
-                    if(!controllers[i].moving) continue;
-                    for (var j = 0; j < controllers[i].tail.length; j++) {
-                        for (var k = 0; k < controllers.length; k++) {
-                            if (controllers[k].position.equals(controllers[i].tail[j])) {
+        }
+        collusionTest : {
+            for (var i = 0; i < controllers.length; i++) {
+                if (!controllers[i].moving) continue;
+                for (var j = 0; j < controllers[i].tail.length; j++) {
+                    for (var k = 0; k < controllers.length; k++) {
+                        if (!controllers[k].moving) continue;
+                        if (controllers[k].position.equals(controllers[i].tail[j])) {
+                            controllers[k].collide();
+                            controllers[i].tailCollideOtherPlayer(controllers[k]);
+                            break collusionTest;
+                        }
+                        for (var u = 0; u < controllers[k].length && u < controllers[k].tail.length && i != k; u++) {
+                            if (controllers[k].tail[u].equals(controllers[i].tail[j])) {
                                 controllers[k].collide();
                                 controllers[i].tailCollideOtherPlayer(controllers[k]);
                                 break collusionTest;
                             }
-                            for (var u = 0; u < controllers[k].length && u < controllers[k].tail.length && i != k; u++) {
-                                if (controllers[k].tail[u].equals(controllers[i].tail[j])) {
-                                    controllers[k].collide();
-                                    controllers[i].tailCollideOtherPlayer(controllers[k]);
-                                    break collusionTest;
-                                }
-                            }
-
                         }
+
                     }
                 }
             }
@@ -266,9 +270,10 @@ keysByDirections[KEYS.W] = DIRECTIONS.TOP;
 keysByDirections[KEYS.A] = DIRECTIONS.LEFT;
 keysByDirections[KEYS.D] = DIRECTIONS.RIGHT;
 keysByDirections[KEYS.S] = DIRECTIONS.DOWN;
-otherKeys = [[[KEYS.ALT , reviveKeyFunction]]];
+otherKeys = [[KEYS.Z, reviveKeyFunction]];
 
 var myPlayer2 = new Player(keysByDirections, otherKeys);
+myPlayer2.identifier = 1;
 myPlayer2.position.x = 10;
 myPlayer2.color = "green";
 c.addController(myPlayer2);
