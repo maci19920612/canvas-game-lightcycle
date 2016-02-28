@@ -19,9 +19,7 @@ var DIRECTIONS = {
     RIGHT: {x: 1, y: 0}
 };
 var RECT_SIZE = 5;
-
 var canvas = document.getElementById("game");
-
 function Point(x, y) {
     this.x = x;
     this.y = y;
@@ -33,8 +31,33 @@ function Point(x, y) {
     }
 }
 
+function EventListenerContainer(parent){
+    var eventHandlers = {};
+    this.on = function(eventName, handler){
+        if(!eventHandlers.hasOwnProperty(eventName)){
+            eventHandlers[eventName] = [];
+        }
+        eventHandlers[eventName].push(handler);
+    };
+    this.remove = function(eventName, handler){
+        if(eventHandlers.hasOwnProperty(eventName)) return;
+        for(var i in eventHandlers[eventName]){
+            if(eventHandlers[eventName][i] == handler){
+                delete eventHandlers[eventName][i];
+                return;
+            }
+        }
+    };
+    this.emmit = function(eventName, eventParams){
+        if(eventHandlers.hasOwnProperty(eventName)){
+            for(var i in eventHandlers[eventName]){
+                eventHandlers[eventName][i].apply(parent, eventParams);
+            }
+        }
+    }
+}
 function Player(_keyControlls, _otherKeys) {
-    console.log(_otherKeys);
+    var constraints = [];
     var keyController = null;
     if (typeof _keyControlls != "undefined" && _keyControlls != null) {
         keyController = new KeyController(_keyControlls, _otherKeys);
@@ -48,9 +71,11 @@ function Player(_keyControlls, _otherKeys) {
     this.length = 40;
     this.moving = true;
     this.color = "#000000";
+    this.events = new EventListenerContainer(this);
+
+
     this.update = function (key) {
         if (this.moving) {
-
             for (var i = 0; i < this.speed; i++) {
                 this.tail.push(
                     new Point(this.position.x + i * this.direction.x * RECT_SIZE, this.position.y + i * this.direction.y * RECT_SIZE)
@@ -77,6 +102,7 @@ function Player(_keyControlls, _otherKeys) {
                 this.position.y = this.position.y - canvas.height;
             }
         }
+
         if (keyController != null && keyController.keyPress) {
             keyController.keyPress(this, key);
         }
@@ -92,12 +118,25 @@ function Player(_keyControlls, _otherKeys) {
             }
         }
     }
+    this.addConstraint = function(contraint){
+        if(contraint.check){
+            constraints.push(contraint);
+        }
+
+    }
+    this.checkConstraints = function(param){
+        for(var i = 0;i<constraints.length;i++){
+            constraints[i].check(param);
+        }
+    }
     this.collide = function () {
+        this.events.emmit("collide", this);
         this.moving = false;
         this.clearTail();
     }
     this.tailCollideOtherPlayer = function (collidedPlayer) {
         if (this != collidedPlayer) {
+            this.events.emmit("tail_collide", {"target": this, "collidedPlayer": collidedPlayer});
             scoreController.addScore(this);
         }
     }
@@ -134,6 +173,13 @@ function KeyController(directionsByKey, otherKeys) {
         }
     }
 }
+function ConstraintChecker(constraint, action){
+    this.check = function(param){
+        if(constraint(param)){
+            action(param);
+        }
+    }
+}
 
 function CanvasController(c) {
     //TODO: Optimalizálni kell
@@ -159,7 +205,16 @@ function CanvasController(c) {
                 controllers[i].update(self.keyDownProvider);
             }
         }
-        collusionTest : {
+        for (var i = 0; i < controllers.length; i++) {
+            if (controllers[i].checkConstraints) {
+                controllers[i].checkConstraints({
+                    "target": controllers[i],
+                    "controllers": controllers
+                });
+            }
+        }
+
+        /*collusionTest : {
             for (var i = 0; i < controllers.length; i++) {
                 if (!controllers[i].moving) continue;
                 for (var j = 0; j < controllers[i].tail.length; j++) {
@@ -181,7 +236,7 @@ function CanvasController(c) {
                     }
                 }
             }
-        }
+        }*/
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         for (var i = 0; i < controllers.length; i++) {
@@ -203,7 +258,6 @@ function CanvasController(c) {
         controllers.push(controller);
     }
 }
-
 function ScoreController() {
     var scoreContainer = document.querySelector(".container .right");
     var scores = {};
@@ -238,8 +292,8 @@ function ScoreController() {
 }
 
 var scoreController = new ScoreController();
-
 var c = new CanvasController(canvas);
+
 
 var reviveKeyFunction = function (controller) {
     if (!controller.moving) {
@@ -252,6 +306,7 @@ var reviveKeyFunction = function (controller) {
     }
 };
 
+
 var keysByDirections = {};
 keysByDirections[KEYS.TOP] = DIRECTIONS.TOP;
 keysByDirections[KEYS.LEFT] = DIRECTIONS.LEFT;
@@ -262,6 +317,37 @@ var otherKeys = [];
 otherKeys.push([KEYS.SPACE, reviveKeyFunction]);
 myPlayer = new Player(keysByDirections, otherKeys);
 myPlayer.color = "red";
+
+myPlayer.addConstraint(new ConstraintChecker(/*constraint*/function(param){
+    var controllers = param["controllers"];
+    var target = param["target"];
+    for(var i in controllers){
+        for(var j in controllers[i].tail){
+            if(target.position.equals(controllers[i].tail[j])){
+                param["collided_target"] = controllers[i];
+                return true;
+            }
+            for(var k = 0; k < target.speed && k < target.tail.length && k != i; k++){
+                if(target.tail[k].equals(controllers[i].tail[j])){
+                    param["collided_target"] = controllers[i];
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}, /*Action*/ function(param){
+    console.log(this);
+    var collidedTarget = param["collided_target"];
+    var target = param["target"];
+    target.collide();
+    if(target != collidedTarget){
+        collidedTarget.tailCollideOtherPlayer(target);
+    }
+}));
+
+
+
 c.addController(myPlayer);
 scoreController.addPlayer(myPlayer, "foldesi.david");
 
@@ -278,5 +364,4 @@ myPlayer2.position.x = 10;
 myPlayer2.color = "green";
 c.addController(myPlayer2);
 scoreController.addPlayer(myPlayer2, "david.foldesi");
-
 c.start();
